@@ -1,0 +1,3 @@
+GEMINI_API_KEY=
+# Optional: require Authorization: Bearer … on /display
+DISPLAY_TOKEN=

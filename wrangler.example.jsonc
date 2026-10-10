@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "glanceboard-cf",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+
+  // Served only on the custom domain, which sits behind Cloudflare Access. The workers.dev
+  // and preview URLs would bypass Access, so they're off.
+  "routes": [{ "pattern": "glance.example.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+
+  // Static dashboard; only /api/* and /display run the Worker. Put the whole hostname behind
+  // Cloudflare Access, with a Bypass rule for /display so the frame can fetch.
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*", "/display"] },
+
+  // Generated pictures and character photos.
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "glanceboard-cf" }],
+
+  // Settings ("config"), run state ("state") and the Workers AI cache ("polish:*").
+  "kv_namespaces": [{ "binding": "KV", "id": "<your-kv-namespace-id>" }],
+
+  // Rewrites events and describes the scene before the image call. Always remote, even in wrangler dev.
+  "ai": { "binding": "AI", "remote": true },
+
+  // Checks every 15 minutes whether a scheduled local hour is due.
+  "triggers": { "crons": ["*/15 * * * *"] }
+
+  // Secrets (wrangler secret put …): GEMINI_API_KEY, and optionally DISPLAY_TOKEN
+}

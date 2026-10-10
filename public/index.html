@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Glanceboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232f4fd8'/><rect x='7' y='9' width='18' height='14' rx='2' fill='none' stroke='white' stroke-width='2.5'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/app.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="#/">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Glanceboard</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="#/" data-route="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</a>
+        <a href="#/prompt" data-route="prompt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Prompt</a>
+        <a href="#/characters" data-route="characters"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>Characters</a>
+        <a href="#/sources" data-route="sources"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar &amp; weather</a>
+        <a href="#/display" data-route="display"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Display</a>
+      </nav>
+      <div class="sidebar-status" id="sidebar-status" aria-live="polite"></div>
+    </aside>
+
+    <main class="content">
+      <!-- Overview -->
+      <section class="page" data-page="overview" aria-labelledby="overview-title">
+        <header class="page-head">
+          <div>
+            <h1 id="overview-title">Overview</h1>
+            <p id="overview-date" class="page-sub"></p>
+          </div>
+          <div class="page-actions">
+            <button id="show-prompt" class="btn" type="button">View prompt</button>
+            <button id="generate" class="btn btn-primary" type="button">Generate now</button>
+          </div>
+        </header>
+
+        <div id="overview-alert" class="alert" role="alert" hidden></div>
+
+        <div class="overview-grid">
+          <div class="panel picture-panel">
+            <div class="panel-head">
+              <h2>On the frame</h2>
+              <div class="segmented" role="radiogroup" aria-label="Picture view">
+                <label><input type="radio" name="view" value="display" checked><span>E-ink preview</span></label>
+                <label><input type="radio" name="view" value="original"><span>Original</span></label>
+              </div>
+            </div>
+            <div class="picture">
+              <img id="picture" alt="The picture currently on the frame" hidden>
+              <div id="picture-empty" class="empty" hidden>
+                <strong>No picture yet</strong>
+                <span>Connect a calendar, then choose Generate now.</span>
+              </div>
+            </div>
+            <dl class="meta-row" id="picture-meta"></dl>
+          </div>
+
+          <div class="stack">
+            <div class="panel">
+              <div class="panel-head"><h2>Today</h2><span id="weather-chip" class="chip" hidden></span></div>
+              <ul id="today-events" class="event-list"><li class="muted">Loading calendar…</li></ul>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h2>Schedule</h2><a class="link" href="#/display">Edit</a></div>
+              <dl id="schedule-summary" class="kv"></dl>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Prompt -->
+      <section class="page" data-page="prompt" aria-labelledby="prompt-title" hidden>
+        <header class="page-head">
+          <div>
+            <h1 id="prompt-title">Prompt</h1>
+            <p class="page-sub">The instructions sent to the image model. Placeholders are filled in with today's details on every run.</p>
+          </div>
+          <div class="page-actions">
+            <button id="reset-prompt" class="btn" type="button">Restore default</button>
+            <button id="preview-prompt" class="btn btn-primary" type="button">Preview</button>
+          </div>
+        </header>
+
+        <div class="prompt-grid">
+          <div class="panel editor-panel">
+            <label class="visually-hidden" for="prompt-text">Prompt template</label>
+            <textarea id="prompt-text" class="editor" spellcheck="false"></textarea>
+          </div>
+          <div class="stack">
+            <div class="panel">
+              <div class="panel-head"><h2>Placeholders</h2></div>
+              <p class="help">Click one to insert it at the cursor.</p>
+              <ul id="placeholder-list" class="placeholder-list"></ul>
+              <p class="help">Wrap text in <code>{{#scene}}…{{/scene}}</code> to include it only when that value isn't empty.</p>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h2>Models</h2></div>
+              <div class="form">
+                <div class="field">
+                  <label for="image-model">Image model</label>
+                  <select id="image-model"></select>
+                </div>
+                <div class="switch-row">
+                  <div>
+                    <label for="polish" class="switch-label">Polish with Workers AI</label>
+                    <p class="help">Rewrites events with an emoji and plain wording, and writes the <code>{{scene}}</code> description.</p>
+                  </div>
+                  <input id="polish" type="checkbox" role="switch" class="switch">
+                </div>
+                <div class="field" id="text-model-field">
+                  <label for="text-model">Text model</label>
+                  <select id="text-model"></select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Characters -->
+      <section class="page" data-page="characters" aria-labelledby="characters-title" hidden>
+        <header class="page-head">
+          <div>
+            <h1 id="characters-title">Characters</h1>
+            <p class="page-sub">People and pets who can appear in the picture. Up to five appear at once, with everyday characters first.</p>
+          </div>
+          <div class="page-actions">
+            <button id="add-character" class="btn btn-primary" type="button">Add character</button>
+          </div>
+        </header>
+        <ul id="character-grid" class="character-grid"></ul>
+        <div id="characters-empty" class="panel empty-panel" hidden>
+          <strong>No characters yet</strong>
+          <span>Add the people who should appear in the picture. A photo keeps them looking the same every day.</span>
+        </div>
+      </section>
+
+      <!-- Calendar & weather -->
+      <section class="page" data-page="sources" aria-labelledby="sources-title" hidden>
+        <header class="page-head">
+          <div>
+            <h1 id="sources-title">Calendar &amp; weather</h1>
+            <p class="page-sub">Where today's events and forecast come from.</p>
+          </div>
+        </header>
+
+        <div class="panel form-panel">
+          <div class="panel-head"><h2>Calendar</h2></div>
+          <div class="form">
+            <div class="field">
+              <label for="ical-url">iCal address</label>
+              <input id="ical-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics">
+              <p class="help">In Google Calendar, open Settings, choose the calendar, and copy "Secret address in iCal format".</p>
+            </div>
+            <div class="field">
+              <label for="timezone">Time zone</label>
+              <input id="timezone" list="timezones" autocomplete="off" spellcheck="false">
+              <datalist id="timezones"></datalist>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel form-panel">
+          <div class="panel-head">
+            <h2>Days with no events</h2>
+          </div>
+          <div class="form">
+            <p class="help">What the schedule shows instead. An encouraging note is added below it.</p>
+            <div class="field-pair">
+              <div class="field">
+                <label for="empty-weekday">Weekdays</label>
+                <input id="empty-weekday">
+              </div>
+              <div class="field">
+                <label for="empty-weekend">Weekends</label>
+                <input id="empty-weekend">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel form-panel">
+          <div class="panel-head"><h2>Weather</h2></div>
+          <div class="form">
+            <div class="field">
+              <label for="location-query">Location</label>
+              <div class="combo">
+                <input id="location-query" type="search" autocomplete="off" placeholder="Search for a town or city" aria-controls="location-results" aria-expanded="false">
+                <ul id="location-results" class="combo-list" role="listbox" hidden></ul>
+              </div>
+              <p class="help" id="location-current"></p>
+            </div>
+            <div class="field">
+              <span class="label" id="unit-label">Temperature</span>
+              <div class="segmented" role="radiogroup" aria-labelledby="unit-label">
+                <label><input type="radio" name="unit" value="celsius"><span>Celsius</span></label>
+                <label><input type="radio" name="unit" value="fahrenheit"><span>Fahrenheit</span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Display -->
+      <section class="page" data-page="display" aria-labelledby="display-title" hidden>
+        <header class="page-head">
+          <div>
+            <h1 id="display-title">Display</h1>
+            <p class="page-sub">How the frame gets its picture, and when a new one is drawn.</p>
+          </div>
+        </header>
+
+        <div class="panel form-panel">
+          <div class="panel-head"><h2>Frame connection</h2></div>
+          <div class="form">
+            <div class="field">
+              <label for="display-url">Picture URL</label>
+              <div class="input-group">
+                <input id="display-url" class="mono" readonly>
+                <button id="copy-url" class="btn" type="button">Copy</button>
+              </div>
+              <p class="help">Paste this into the PhotoPainter's Image URL setting.</p>
+              <p class="help warn" id="display-url-token">Anyone with this URL can see today's picture. Run <code>wrangler secret put DISPLAY_TOKEN</code> to require a token.</p>
+            </div>
+            <div class="field" id="display-token-field" hidden>
+              <label for="display-token">Access token</label>
+              <div class="input-group">
+                <input id="display-token" class="mono" type="password" readonly>
+                <button id="copy-token" class="btn" type="button">Copy</button>
+              </div>
+              <p class="help">Paste this into the PhotoPainter's Access Token setting. It's sent as an <code>Authorization: Bearer</code> header.</p>
+            </div>
+            <div class="switch-row">
+              <div>
+                <label for="battery" class="switch-label">Battery indicator</label>
+                <p class="help">Draws a thin line on the right edge, rising with the battery level the frame reports.</p>
+              </div>
+              <input id="battery" type="checkbox" role="switch" class="switch">
+            </div>
+          </div>
+        </div>
+
+        <div class="panel form-panel">
+          <div class="panel-head"><h2>Drawing schedule</h2></div>
+          <div class="form">
+            <p class="help">A new picture is drawn at the selected hours, in your time zone. If today's details haven't changed since the last picture, the frame keeps it and the image model isn't called.</p>
+            <div id="schedule" class="hours" role="group" aria-label="Drawing hours"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="savebar" class="savebar" hidden>
+    <span class="savebar-dot" aria-hidden="true"></span>
+    <p>Unsaved changes</p>
+    <p id="save-error" class="save-error" role="alert" hidden></p>
+    <button id="discard" type="button" class="btn btn-ghost-dark">Discard</button>
+    <button id="save" type="button" class="btn btn-light">Save</button>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="prompt-sheet" class="sheet sheet-wide" aria-labelledby="prompt-sheet-title">
+    <header class="sheet-head">
+      <h2 id="prompt-sheet-title">Prompt preview</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="sheet-body">
+      <ul id="prompt-warnings" class="alert-list" hidden></ul>
+      <dl id="prompt-facts" class="kv"></dl>
+      <pre id="prompt-output" class="prompt-output"></pre>
+    </div>
+  </dialog>
+
+  <dialog id="character-sheet" class="sheet" aria-labelledby="character-sheet-title">
+    <header class="sheet-head">
+      <h2 id="character-sheet-title">Character</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="sheet-body form">
+      <div class="photo-field">
+        <div class="avatar avatar-lg" id="cs-photo"></div>
+        <div>
+          <label class="btn" for="cs-file">Upload photo</label>
+          <input id="cs-file" type="file" accept="image/jpeg,image/png,image/webp" class="visually-hidden">
+          <button id="cs-remove-photo" type="button" class="btn btn-subtle">Remove</button>
+          <p class="help">JPEG, PNG or WebP, up to 5 MB. A clear photo of their face works best.</p>
+        </div>
+      </div>
+      <div class="field">
+        <label for="cs-name">Name</label>
+        <input id="cs-name" autocomplete="off">
+      </div>
+      <div class="field" id="cs-aliases-field">
+        <label for="cs-aliases">Also known as</label>
+        <input id="cs-aliases" autocomplete="off" placeholder="Mum, Mummy">
+        <p class="help" id="cs-aliases-help"></p>
+      </div>
+      <div class="field">
+        <span class="label" id="cs-gender-label">Gender</span>
+        <div class="segmented segmented-block" role="radiogroup" aria-labelledby="cs-gender-label">
+          <label><input type="radio" name="cs-gender" value="female"><span>Female</span></label>
+          <label><input type="radio" name="cs-gender" value="male"><span>Male</span></label>
+          <label><input type="radio" name="cs-gender" value=""><span>Not set</span></label>
+        </div>
+        <p class="help">Leave it unset for pets and toys.</p>
+      </div>
+      <div class="field-pair">
+        <div class="field">
+          <label for="cs-birthday">Birthday</label>
+          <input id="cs-birthday" type="date">
+          <p class="help">Adds a countdown to the picture in the two weeks before.</p>
+        </div>
+        <div class="field">
+          <label for="cs-age">Age</label>
+          <input id="cs-age" type="number" min="0" max="120" inputmode="numeric">
+          <p class="help" id="cs-age-help">Helps the image model draw them at the right age.</p>
+        </div>
+      </div>
+      <div class="field">
+        <span class="label" id="cs-inclusion-label">Appears</span>
+        <div class="segmented segmented-block" role="radiogroup" aria-labelledby="cs-inclusion-label">
+          <label><input type="radio" name="cs-inclusion" value="always"><span>Every day</span></label>
+          <label><input type="radio" name="cs-inclusion" value="mentioned"><span>When an event mentions them</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <label for="cs-description">Description</label>
+        <textarea id="cs-description" rows="4" placeholder="A seven-year-old girl with curly red hair and round glasses"></textarea>
+        <p class="help">Sent to the image model as written.</p>
+      </div>
+    </div>
+    <footer class="sheet-foot">
+      <button id="cs-delete" type="button" class="btn btn-danger">Delete character</button>
+      <button type="button" class="btn btn-primary" data-close>Done</button>
+    </footer>
+  </dialog>
+</body>
+</html>
