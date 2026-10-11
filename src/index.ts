@@ -1,8 +1,8 @@
 import { DEFAULT_PROMPT, PLACEHOLDERS } from "./prompt";
 import { TEXT_MODELS } from "./polish";
 import { IMAGE_MODELS, loadConfig, loadState, parseConfig, saveConfig } from "./config";
-import { drawBatteryLine, encodePng, indicesToRgb, parseBatteryPercentage } from "./image";
-import { buildPrompt, generate, runSchedule, type Env } from "./pipeline";
+import { batteryLineHeight, batteryLinePng, HEIGHT, parseBatteryPercentage, WIDTH } from "./image";
+import { buildPrompt, generate, PICTURE, runSchedule, type Env } from "./pipeline";
 import { fetchTodaysEvents } from "./calendar";
 import { fetchWeather } from "./weather";
 import { castFor } from "./prompt";
@@ -34,18 +34,61 @@ async function serveObject(env: Env, key: string): Promise<Response> {
   });
 }
 
-/** The frame's endpoint. Burns in the battery line when enabled and reported. */
+const FRAME_KEY = "frame";
+
+function jsonObject(header: string | null): Record<string, unknown> | null {
+  if (!header) return null;
+  try {
+    const value = JSON.parse(header);
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Keeps the frame's processing settings and calibrated palette, so the dashboard preview can match it. */
+async function rememberFrameSettings(request: Request, env: Env): Promise<void> {
+  const processing = jsonObject(request.headers.get("x-processing-settings"));
+  const palette = jsonObject(request.headers.get("x-color-palette"));
+  if (!processing && !palette) return;
+  const next = JSON.stringify({ processing, palette });
+  if (next !== (await env.KV.get(FRAME_KEY))) await env.KV.put(FRAME_KEY, next);
+}
+
+function etagMatches(header: string | null, etag: string): boolean {
+  if (!header) return false;
+  return header.split(",").some((t) => t.trim().replace(/^W\//, "") === etag || t.trim() === "*");
+}
+
+/**
+ * The frame's endpoint. Answers 304 when the frame already shows this picture, so it
+ * skips the redraw. Draws the battery line when enabled and reported.
+ */
 async function serveDisplay(request: Request, env: Env): Promise<Response> {
   const config = await loadConfig(env.KV);
   const pct = config.battery ? parseBatteryPercentage(request.headers.get("x-battery-percentage")) : null;
-  if (pct === null) return serveObject(env, "display.png");
+  const line = pct === null ? 0 : batteryLineHeight(pct);
 
-  const obj = await env.BUCKET.get("display.idx");
-  if (!obj) return new Response("No image yet", { status: 404 });
-  const indices = drawBatteryLine(new Uint8Array(await obj.arrayBuffer()), pct);
-  return new Response(await encodePng(indicesToRgb(indices)), {
-    headers: { "content-type": "image/png", "cache-control": "no-store" },
-  });
+  const head = await env.BUCKET.head(PICTURE);
+  if (!head) return new Response("No picture yet", { status: 404 });
+  // The line's height is part of the ETag, so the frame redraws when the line changes.
+  const etag = line ? `"${head.etag}-b${line}"` : head.httpEtag;
+  const headers = { etag, "cache-control": "no-cache" };
+  if (etagMatches(request.headers.get("if-none-match"), etag)) return new Response(null, { status: 304, headers });
+
+  const obj = await env.BUCKET.get(PICTURE);
+  if (!obj) return new Response("No picture yet", { status: 404 });
+  if (!line) {
+    return new Response(obj.body, { headers: { ...headers, "content-type": obj.httpMetadata?.contentType ?? "image/png" } });
+  }
+
+  // Crop to the panel the way the frame would, so the line lands on its right edge.
+  const overlay = new Blob([await batteryLinePng(line)]).stream();
+  const result = await env.IMAGES.input(obj.body)
+    .transform({ width: WIDTH, height: HEIGHT, fit: "cover" })
+    .draw(overlay, { right: 0, bottom: 0 })
+    .output({ format: "image/png" });
+  return result.response({ headers });
 }
 
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
@@ -135,8 +178,13 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     return serveObject(env, key);
   }
 
-  if (pathname === "/api/image/original.png") return serveObject(env, "original.png");
-  if (pathname === "/api/image/display.png") return serveObject(env, "display.png");
+  if (pathname === "/api/picture" && method === "GET") return serveObject(env, PICTURE);
+
+  // The frame's own processing settings and palette, as it last sent them, for the e-ink preview.
+  if (pathname === "/api/frame" && method === "GET") {
+    const frame = await env.KV.get(FRAME_KEY);
+    return json(frame ? JSON.parse(frame) : null);
+  }
 
   return fail("Not found", 404);
 }
@@ -152,6 +200,7 @@ export default {
       if (env.DISPLAY_TOKEN && !(await sameSecret(token, env.DISPLAY_TOKEN))) {
         return new Response("Missing or wrong token", { status: 401 });
       }
+      ctx.waitUntil(rememberFrameSettings(request, env));
       return serveDisplay(request, env);
     }
 

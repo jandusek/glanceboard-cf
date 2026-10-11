@@ -102,16 +102,74 @@ function route() {
 
 // ─── Overview ────────────────────────────────────
 
+// The frame's own image pipeline, so the preview matches what it will draw.
+const EPAPER = "https://cdn.jsdelivr.net/npm/@aitjcize/epaper-image-convert@0.1.21/+esm";
+let pictureShown = ""; // `${lastGeneratedAt}|${view}` currently on the canvas
+let pictureSource = null; // { key, image: Promise<HTMLImageElement> }
+
+function loadPicture(key) {
+  if (pictureSource?.key !== key) {
+    const img = new Image();
+    img.src = `/api/picture?v=${encodeURIComponent(key)}`;
+    pictureSource = { key, image: img.decode().then(() => img) };
+  }
+  return pictureSource.image;
+}
+
+/** Centre-crop to the panel, as the frame does. */
+function coverCrop(img, width = 800, height = 480) {
+  const canvas = el("canvas", { width, height });
+  const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+  const sw = width / scale, sh = height / scale;
+  canvas.getContext("2d").drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, 0, 0, width, height);
+  return canvas;
+}
+
+/** Tone-maps and dithers like the frame, with its calibrated palette and settings once it has fetched a picture. */
+async function einkPreview(img) {
+  const [ep, frame] = await Promise.all([import(EPAPER), api("/api/frame").catch(() => null)]);
+  let palette = ep.SPECTRA6;
+  let params = ep.getDefaultParams();
+  if (frame) {
+    const device = ep.parseDeviceConfig({ processing: frame.processing ?? undefined, palette: frame.palette ?? undefined });
+    palette = ep.paletteFromDeviceConfig(device);
+    params = ep.mergeParams(ep.paramsFromDeviceConfig(device));
+  }
+  return ep.processImage(coverCrop(img), { displayWidth: 800, displayHeight: 480, palette, params, usePerceivedOutput: true }).canvas;
+}
+
+async function drawPicture(view) {
+  const key = state.lastGeneratedAt;
+  const shown = `${key}|${view}`;
+  if (shown === pictureShown) return;
+  pictureShown = shown;
+  const canvas = $("#picture");
+  canvas.classList.toggle("original", view === "original");
+  try {
+    const img = await loadPicture(key);
+    let out = coverCrop(img);
+    if (view === "display") {
+      try {
+        out = await einkPreview(img);
+      } catch (e) {
+        toast(`The e-ink preview couldn't be drawn, showing the original: ${e.message}`, true);
+      }
+    }
+    if (pictureShown !== shown) return; // a newer picture or view took over
+    canvas.width = out.width;
+    canvas.height = out.height;
+    canvas.getContext("2d").drawImage(out, 0, 0);
+  } catch {
+    if (pictureShown === shown) pictureShown = ""; // let the next render retry
+  }
+}
+
 function renderPicture() {
   const view = $('input[name="view"]:checked').value;
-  const img = $("#picture");
   const has = Boolean(state.lastGeneratedAt);
-  img.hidden = !has;
+  $("#picture").hidden = !has;
   $("#picture-empty").hidden = has;
-  if (has) {
-    img.src = `/api/image/${view}.png?v=${encodeURIComponent(state.lastGeneratedAt)}`;
-    img.classList.toggle("original", view === "original");
-  }
+  if (has) drawPicture(view);
   const modelId = state.lastModel ?? config.imageModel;
   const model = defaults.models.find((m) => m.id === modelId)?.name ?? modelId;
   $("#show-last-prompt").hidden = !(has && state.lastPrompt);

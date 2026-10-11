@@ -18,8 +18,12 @@
   // Generated pictures and character photos.
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "glanceboard-cf" }],
 
-  // Settings ("config"), run state ("state") and the Workers AI cache ("polish:*").
+  // Settings ("config"), run state ("state"), the frame's settings ("frame") and the Workers AI cache ("polish:*").
   "kv_namespaces": [{ "binding": "KV", "id": "<your-kv-namespace-id>" }],
+
+  // Draws the battery line on the picture when the frame reports its level. Always remote, even in
+  // wrangler dev: the local stand-in does not draw overlays.
+  "images": { "binding": "IMAGES", "remote": true },
 
   // Rewrites events and describes the scene before the image call. Always remote, even in wrangler dev.
   "ai": { "binding": "AI", "remote": true },

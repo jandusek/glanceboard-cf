@@ -1,7 +1,6 @@
 import { fetchTodaysEvents, type CalendarEvent } from "./calendar";
 import { loadConfig, loadState, saveState, type Config, type State } from "./config";
 import { generateImage, type ReferencePhoto } from "./gemini";
-import { decodeImage, dither, encodePng, fitToDisplay, indicesToRgb } from "./image";
 import { polish, type Polished } from "./polish";
 import { castFor, DEFAULT_PROMPT, placeholderValues, renderTemplate, type CastMember } from "./prompt";
 import { dayKey, wallClock } from "./time";
@@ -10,13 +9,18 @@ import { fetchWeather, seasonFor, type Weather } from "./weather";
 export interface Env {
   /** Pictures and character photos. */
   BUCKET: R2Bucket;
-  /** Settings ("config"), run state ("state") and the Workers AI cache ("polish:*"). */
+  /** Crops the picture and draws the battery line when the frame reports its level. */
+  IMAGES: ImagesBinding;
+  /** Settings ("config"), run state ("state"), the frame's settings ("frame") and the Workers AI cache ("polish:*"). */
   KV: KVNamespace;
   AI: Ai;
   GEMINI_API_KEY: string;
   /** Optional; when set, the frame must send Authorization: Bearer … */
   DISPLAY_TOKEN?: string;
 }
+
+/** R2 key of the current picture. */
+export const PICTURE = "picture";
 
 export interface PromptResult {
   prompt: string;
@@ -90,7 +94,7 @@ export async function generate(env: Env, opts: { force: boolean; now?: number })
     const photoKeys = cast.map((m) => m.character.photo).filter(Boolean);
     const hash = await sha256(JSON.stringify([prompt, config.imageModel, photoKeys]));
 
-    if (!opts.force && hash === state.lastHash && (await env.BUCKET.head("display.png"))) {
+    if (!opts.force && hash === state.lastHash && (await env.BUCKET.head(PICTURE))) {
       state.lastSkipped = state.lastRunAt;
       state.lastError = null;
       await saveState(env.KV, state);
@@ -110,15 +114,8 @@ export async function generate(env: Env, opts: { force: boolean; now?: number })
     }
 
     const image = await generateImage(env.GEMINI_API_KEY, config.imageModel, prompt, photos);
-    const fitted = fitToDisplay(decodeImage(image.data, image.mimeType));
-    const indices = dither(fitted);
-    const [original, display] = await Promise.all([encodePng(fitted.data), encodePng(indicesToRgb(indices))]);
-    const png = { httpMetadata: { contentType: "image/png" } };
-    await Promise.all([
-      env.BUCKET.put("original.png", original, png),
-      env.BUCKET.put("display.png", display, png),
-      env.BUCKET.put("display.idx", indices),
-    ]);
+    // Stored as Gemini drew it; the frame crops, tone-maps and dithers it to its inks itself.
+    await env.BUCKET.put(PICTURE, image.data, { httpMetadata: { contentType: image.mimeType } });
 
     Object.assign(state, {
       lastGeneratedAt: state.lastRunAt,
