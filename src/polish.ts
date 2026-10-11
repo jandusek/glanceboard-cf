@@ -37,7 +37,7 @@ const SYSTEM = `You write the text for a children's illustrated daily planner th
 
 Return JSON with:
 - "events": exactly one line per input event, in the same order. Start each line with one fitting emoji, then the time as given (omit it for all-day events), then the event in friendly words a child understands. At most 10 words after the time. Keep every name. Never add details that aren't in the event.
-- "scene": one or two sentences describing a charming, playful storybook setting for today's illustration, built around the day's activities and fitting the season, the weather and the location. Add a whimsical touch or two (a curious bird, dancing music notes, a cat watching). Use plants and buildings typical for that place. Don't name or describe any people.`;
+- "scene": one or two sentences describing a charming, believable setting for today's illustration, built around the day's activities and fitting the season, the weather and the location. At most one gentle, realistic touch of whimsy tied to an activity (e.g. a few music notes drifting from a window). Use plants and buildings typical for that place. Don't name or describe any people.`;
 
 export type AiResult = { response?: unknown; choices?: { message?: { content?: string | null } }[] };
 
