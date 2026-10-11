@@ -5,34 +5,42 @@ import type { Weather } from "./weather";
 import { seasonFor } from "./weather";
 import type { WallClock } from "./time";
 
-export const DEFAULT_PROMPT = `Create a children's illustrated daily planner in pen-and-ink style on a clean white paper background with crosshatching. Wide landscape format, 5:3 (800×480).
+export const DEFAULT_PROMPT = `Create a children's illustrated daily planner in pen-and-ink style on a clean white paper background with crosshatching. Wide landscape format, 5:3 (800×480). The image must be clearly wider than it is tall.
 
-Leave generous margins on all sides. Keep text, characters and anything important well away from the edges.
+FRAMING: leave generous margins on all sides. Keep text, characters and anything important well away from the edges so nothing gets clipped on the display.
 
-TOP: a ribbon banner reads '{{day}} adventure' in bold hand-drawn block letters.
+LAYOUT — ONE FULL-WIDTH SCENE WITH OVERLAID TEXT:
+The entire image is a single charming pen-and-ink illustration of a {{season}} scene{{#location}} in {{location}}{{/location}}, related to the day's activities. The scene fills the whole canvas.
 
-LEFT SIDE: a clear, readable handwritten list of today's schedule, one item per line with a bullet. The text sits in the foreground over the scene; keep the block only as tall as the list needs.
+TOP: a ribbon banner reads '{{day}} adventure' in bold hand-drawn block letters, well below the top edge.
+
+LEFT SIDE (roughly 40% of the width) — TEXT OVERLAY:
+Over the left part of the scene, write a clear, readable handwritten-style list of today's schedule, one item per line with a bullet, the time (if there is one) and the name. The text sits in the foreground, but the scene continues behind and around it: trees, sky, a wall or other background details peek around the edges. Keep the area right behind the text fairly uncluttered so it stays legible.
 {{events}}
 
-RIGHT SIDE: the main scene, one charming illustration built around today's activities, on a {{season}} day{{#location}} in {{location}}{{/location}}.{{#scene}} {{scene}}{{/scene}}{{#characters}} Show these characters, doing today's activities where it fits. Draw only these characters and no other people.
-{{characters}}{{/characters}}
-{{#weather}}
-Dress everyone for the weather: {{clothing}}.
+RIGHT SIDE (roughly 60% of the width) — MAIN SCENE:
+This is where the main action and the characters are. The illustration flows naturally from the left side, but the focal point stays on the right so it doesn't compete with the text.
+{{#setting}}
+SETTING: {{setting}}
+{{/setting}}{{#characters}}
+CHARACTERS (in the scene on the right): show these characters, bringing today's activities into the picture where it fits. Draw only these characters and no other people.
+{{characters}}
+{{/characters}}{{#weather}}
+Dress everyone for today's weather: {{clothing}}. Don't draw snow, ice or frost unless it's below 2°C.
 
-BOTTOM LEFT: a small hand-drawn weather stamp reading '{{weather}}'.
+BOTTOM LEFT — WEATHER: a small hand-drawn weather badge, clear and readable, like a little stamp on the illustration, reading '{{weather}}'.
 {{/weather}}{{#countdown}}
 BOTTOM RIGHT: a small hand-drawn countdown note reading:
 {{countdown}}
 {{/countdown}}
-STYLE: detailed pen-and-ink like a classic illustrated book, hand-drawn crosshatching, charming and kid-friendly but not cartoonish. People have natural proportions and realistic, expressive faces. Keep whimsy gentle and believable: no faces on clouds, plants or objects, no sound-effect words, no added animals unless the scene calls for them. Keep the mood warm and cheerful whatever the weather. Black ink on pure white (#FFFFFF) paper with limited accents of red, green, blue and yellow. No cream, beige or parchment tones. The text must be high-contrast and easy to read.
-
-REALISM: no snow, frost or ice unless it's below 2°C.{{#location}} Use plants, animals, buildings and clothing that belong in {{location}}.{{/location}}`;
+STYLE RULES: pen-and-ink illustration, hand-drawn crosshatching, charming and whimsical. Use only black ink and white (#FFFFFF) paper, plus limited accents of red, green, blue and yellow; no cream, beige or parchment tones. Kid-friendly, warm, joyful, whatever the weather. No scary elements. The text on the left must be clearly readable, high contrast against the background.`;
 
 export const PLACEHOLDERS: { name: string; meaning: string }[] = [
   { name: "day", meaning: "Weekday name, e.g. Thursday" },
   { name: "date", meaning: "Date, e.g. 8 October" },
   { name: "events", meaning: "Today's schedule as bullet lines, or the empty-day lines" },
-  { name: "scene", meaning: "A setting for the picture, written by Workers AI" },
+  { name: "setting", meaning: "Your local setting, from the box on this page" },
+  { name: "scene", meaning: "A scene for the picture, written fresh by Workers AI" },
   { name: "characters", meaning: "Who appears today, one numbered line each" },
   { name: "countdown", meaning: "Birthdays and holidays in the next two weeks, up to three" },
   { name: "weather", meaning: "Weather stamp, e.g. ☀️ 24°C Clear sky" },
@@ -129,6 +137,7 @@ export function placeholderValues({ now, events, cast, weather, config, polished
     clothing: weather?.clothing ?? "",
     season: seasonFor(now.month, config.location?.latitude ?? null),
     location: config.location?.name ?? "",
+    setting: config.setting.trim(),
     scene: polished?.scene ?? "",
     countdown: countdownsFor(config.characters, now).map((c) => c.text).join("\n"),
   };

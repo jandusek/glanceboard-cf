@@ -263,6 +263,7 @@ function renderPromptPage() {
   );
   fillSelect($("#image-model"), defaults.models, config.imageModel);
   fillSelect($("#text-model"), defaults.textModels, config.textModel);
+  $("#setting").value = config.setting ?? "";
   $("#polish").checked = config.polish;
   $("#text-model-field").hidden = !config.polish;
 }
@@ -516,6 +517,7 @@ function renderAll() {
 function bindInputs() {
   const bind = (sel, apply, event = "input") => $(sel).addEventListener(event, (e) => { apply(e.target); markDirty(); });
   bind("#prompt-text", (t) => { config.prompt = t.value.trim() === defaults.prompt.trim() ? "" : t.value; });
+  bind("#setting", (t) => { config.setting = t.value; });
   bind("#image-model", (t) => { config.imageModel = t.value; renderPicture(); }, "change");
   bind("#text-model", (t) => { config.textModel = t.value; }, "change");
   bind("#polish", (t) => { config.polish = t.checked; $("#text-model-field").hidden = !t.checked; }, "change");

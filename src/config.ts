@@ -30,6 +30,8 @@ export interface Config {
   /** Workers AI rewrites events and describes the scene before the image call. */
   polish: boolean;
   textModel: string;
+  /** Local surroundings to draw ("our estate looks like…"), for {{setting}}. */
+  setting: string;
   /** Prompt template; empty means the built-in default. */
   prompt: string;
   /** Lines shown on days with no events. */
@@ -67,6 +69,7 @@ export const DEFAULT_CONFIG: Config = {
   imageModel: IMAGE_MODELS[0].id,
   polish: true,
   textModel: TEXT_MODELS[0].id,
+  setting: "",
   prompt: "",
   emptyDay: { weekday: "📝 Homework & practice piano", weekend: "🎹 Practice piano & tidy your room" },
   characters: [],
@@ -182,6 +185,7 @@ export function parseConfig(input: unknown): Config {
     imageModel,
     polish: c.polish !== false,
     textModel,
+    setting: str(c.setting, 3000),
     prompt: prompt === DEFAULT_PROMPT.trim() ? "" : prompt,
     emptyDay: { weekday: str(c.emptyDay?.weekday, 300), weekend: str(c.emptyDay?.weekend, 300) },
     characters,
