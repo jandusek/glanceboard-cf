@@ -54,8 +54,8 @@ export interface State {
 }
 
 export const IMAGE_MODELS = [
-  { id: "gemini-3-pro-image", name: "Gemini 3 Pro Image" },
   { id: "gemini-nano-banana-2.1", name: "Nano Banana 2.1" },
+  { id: "gemini-3-pro-image", name: "Gemini 3 Pro Image" },
   { id: "gemini-3.1-flash-image", name: "Gemini 3.1 Flash Image" },
   { id: "gemini-3.1-flash-lite-image", name: "Gemini 3.1 Flash Lite Image" },
 ];

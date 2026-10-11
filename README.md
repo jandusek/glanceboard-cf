@@ -24,9 +24,9 @@ Everything runs on one Cloudflare account and one Gemini API key.
 
 | Image model | Per image | One image a day, per year |
 |---|---|---|
-| Gemini 3 Pro Image (default) | $0.134 | ~$49 |
+| Nano Banana 2.1 (default) | $0.034 | ~$12 |
+| Gemini 3 Pro Image | $0.134 | ~$49 |
 | Gemini 3.1 Flash Image | $0.067 | ~$25 |
-| Nano Banana 2.1 | $0.034 | ~$12 |
 | Gemini 3.1 Flash Lite Image | $0.034 | ~$12 |
 
 Character photos and the prompt add about a cent a day in input tokens with the Pro model, and less with the others. Each extra scheduled hour that produces a new picture adds the same amount again. Hours where nothing changed are skipped without calling Gemini.
