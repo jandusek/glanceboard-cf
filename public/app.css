@@ -204,6 +204,7 @@ input::placeholder, textarea::placeholder { color: var(--text-3); }
 .meta-row div { display: grid; gap: 1px; }
 .meta-row dt { color: var(--text-3); font-size: 12px; }
 .meta-row dd { margin: 0; font-weight: 500; }
+#show-last-prompt { margin-top: 10px; }
 
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
 .event-list { list-style: none; margin: 0; padding: 0; display: grid; }

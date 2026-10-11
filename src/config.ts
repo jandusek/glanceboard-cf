@@ -41,7 +41,9 @@ export interface Config {
 export interface State {
   lastRunAt: string | null;
   lastGeneratedAt: string | null;
+  /** Prompt and image model behind the current picture, for troubleshooting. */
   lastPrompt: string | null;
+  lastModel: string | null;
   lastHash: string | null;
   lastError: string | null;
   lastSkipped: string | null;
@@ -75,6 +77,7 @@ const EMPTY_STATE: State = {
   lastRunAt: null,
   lastGeneratedAt: null,
   lastPrompt: null,
+  lastModel: null,
   lastHash: null,
   lastError: null,
   lastSkipped: null,

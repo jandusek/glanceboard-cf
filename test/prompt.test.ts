@@ -48,9 +48,9 @@ describe("placeholderValues", () => {
   const saturday = { ...thursday, day: 10, weekday: 6 };
   const config: Config = { ...DEFAULT_CONFIG, location: { name: "Sydney, Australia", latitude: -33.9, longitude: 151.2 } };
 
-  it("lists events with times, all-day events without", () => {
+  it("lists events with times, all-day events without, and leaves out locations", () => {
     const v = placeholderValues({ now: thursday, events: [ev("Camp", { allDay: true, time: "All day" }), ev("Swim", { location: "Pool" })], cast: [], weather: null, config });
-    expect(v.events).toBe("• Camp\n• 9:00 AM — Swim (Pool)");
+    expect(v.events).toBe("• Camp\n• 9:00 AM — Swim");
     expect(v.day).toBe("Thursday");
     expect(v.season).toBe("spring");
   });

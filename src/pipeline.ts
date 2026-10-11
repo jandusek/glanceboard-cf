@@ -123,6 +123,7 @@ export async function generate(env: Env, opts: { force: boolean; now?: number })
     Object.assign(state, {
       lastGeneratedAt: state.lastRunAt,
       lastPrompt: prompt,
+      lastModel: config.imageModel,
       lastHash: hash,
       lastError: null,
       lastSkipped: null,

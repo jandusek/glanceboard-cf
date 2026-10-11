@@ -12,6 +12,7 @@ let defaults = null;
 let state = null;
 let displayUrl = "";
 let displayToken = null;
+let geminiKeySet = true;
 
 // ─── API ─────────────────────────────────────────
 
@@ -96,7 +97,7 @@ function route() {
   }
   document.title = page === "overview" ? "Glanceboard" : `${TITLES[page]} – Glanceboard`;
   window.scrollTo(0, 0);
-  if (page === "overview") loadToday();
+  if (page === "overview") { loadToday(); refreshState(); }
 }
 
 // ─── Overview ────────────────────────────────────
@@ -111,7 +112,9 @@ function renderPicture() {
     img.src = `/api/image/${view}.png?v=${encodeURIComponent(state.lastGeneratedAt)}`;
     img.classList.toggle("original", view === "original");
   }
-  const model = defaults.models.find((m) => m.id === config.imageModel)?.name ?? config.imageModel;
+  const modelId = state.lastModel ?? config.imageModel;
+  const model = defaults.models.find((m) => m.id === modelId)?.name ?? modelId;
+  $("#show-last-prompt").hidden = !(has && state.lastPrompt);
   const items = [
     ["Drawn", state.lastGeneratedAt ? relativeDay(state.lastGeneratedAt) : "Never"],
     ["Last check", state.lastRunAt ? relativeDay(state.lastRunAt) : "Never"],
@@ -139,6 +142,26 @@ function renderStatus() {
     el("span", { className: "label" }, "Next picture"),
     el("span", {}, el("span", { className: `status-dot${state.lastError ? " bad" : ""}` }), next ?? "Not scheduled"),
   );
+}
+
+// The cron draws new pictures while the dashboard sits open, so re-check the
+// run state whenever the overview is in view rather than only at boot.
+const overviewVisible = () => document.visibilityState === "visible" && !$('[data-page="overview"]').hidden;
+
+function withKeyWarning(st) {
+  if (!geminiKeySet && !st.lastError) st.lastError = "GEMINI_API_KEY isn't set. Add it with: wrangler secret put GEMINI_API_KEY";
+  return st;
+}
+
+async function refreshState() {
+  try {
+    const next = withKeyWarning(await api("/api/state"));
+    const changed = JSON.stringify(next) !== JSON.stringify(state);
+    state = next;
+    if (changed) { renderPicture(); renderStatus(); }
+  } catch {
+    // Keep showing what we have; the next check retries.
+  }
 }
 
 async function loadToday() {
@@ -191,8 +214,19 @@ async function generateNow() {
   }
 }
 
+function showLastPrompt() {
+  $("#prompt-sheet-title").textContent = "Prompt used for this picture";
+  $("#prompt-warnings").hidden = true;
+  const model = defaults.models.find((m) => m.id === state.lastModel)?.name ?? state.lastModel ?? "Not recorded";
+  const facts = [["Drawn", relativeDay(state.lastGeneratedAt)], ["Model", model]];
+  $("#prompt-facts").replaceChildren(...facts.flatMap(([k, v]) => [el("dt", { textContent: k }), el("dd", { textContent: v })]));
+  $("#prompt-output").textContent = state.lastPrompt;
+  $("#prompt-sheet").showModal();
+}
+
 async function showPrompt(template) {
   const sheet = $("#prompt-sheet");
+  $("#prompt-sheet-title").textContent = "Prompt preview";
   $("#prompt-output").textContent = config.polish ? "Building the prompt and asking Workers AI…" : "Building the prompt…";
   $("#prompt-warnings").hidden = true;
   $("#prompt-facts").replaceChildren();
@@ -500,6 +534,7 @@ function bindInputs() {
   });
   $("#preview-prompt").addEventListener("click", () => showPrompt($("#prompt-text").value));
   $("#show-prompt").addEventListener("click", () => showPrompt());
+  $("#show-last-prompt").addEventListener("click", showLastPrompt);
   $("#generate").addEventListener("click", generateNow);
   $("#add-character").addEventListener("click", () => {
     const c = {
@@ -527,6 +562,9 @@ function bindInputs() {
   bindCharacterSheet();
   bindLocationSearch();
   window.addEventListener("hashchange", route);
+  document.addEventListener("visibilitychange", () => { if (overviewVisible()) refreshState(); });
+  window.addEventListener("pageshow", (e) => { if (e.persisted && overviewVisible()) refreshState(); });
+  setInterval(() => { if (overviewVisible()) refreshState(); }, 60_000);
   window.addEventListener("beforeunload", (e) => { if (isDirty()) e.preventDefault(); });
   document.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "s" && isDirty()) { e.preventDefault(); save(); }
@@ -556,12 +594,12 @@ async function save() {
 async function boot() {
   const [settings, st] = await Promise.all([api("/api/config"), api("/api/state")]);
   defaults = settings.defaults;
-  state = st;
   config = settings.config;
   saved = JSON.stringify(config);
   displayUrl = settings.displayUrl;
   displayToken = settings.displayToken;
-  if (!settings.geminiKeySet && !state.lastError) state.lastError = "GEMINI_API_KEY isn't set. Add it with: wrangler secret put GEMINI_API_KEY";
+  geminiKeySet = settings.geminiKeySet;
+  state = withKeyWarning(st);
 
   $("#timezones").replaceChildren(...Intl.supportedValuesOf("timeZone").map((tz) => el("option", { value: tz })));
   bindInputs();

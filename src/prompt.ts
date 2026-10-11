@@ -14,7 +14,7 @@ TOP: a ribbon banner reads '{{day}} adventure' in bold hand-drawn block letters.
 LEFT SIDE: a clear, readable handwritten list of today's schedule, one item per line with a bullet. The text sits in the foreground over the scene; keep the block only as tall as the list needs.
 {{events}}
 
-RIGHT SIDE: the main scene, a {{season}} day{{#location}} in {{location}}{{/location}}.{{#scene}} {{scene}}{{/scene}}{{#characters}} Show these characters, doing today's activities where it fits. Draw only these characters and no other people.
+RIGHT SIDE: the main scene, one charming, whimsical illustration built around today's activities, on a {{season}} day{{#location}} in {{location}}{{/location}}.{{#scene}} {{scene}}{{/scene}}{{#characters}} Show these characters, doing today's activities where it fits. Draw only these characters and no other people.
 {{characters}}{{/characters}}
 {{#weather}}
 Dress everyone for the weather: {{clothing}}.
@@ -24,7 +24,7 @@ BOTTOM LEFT: a small hand-drawn weather stamp reading '{{weather}}'.
 BOTTOM RIGHT: a small hand-drawn countdown note reading:
 {{countdown}}
 {{/countdown}}
-STYLE: pen-and-ink, hand-drawn crosshatching, charming and whimsical, kid-friendly. Black ink on pure white (#FFFFFF) paper with limited accents of red, green, blue and yellow. No cream, beige or parchment tones. The text must be high-contrast and easy to read.
+STYLE: pen-and-ink, hand-drawn crosshatching, charming and whimsical like a storybook, kid-friendly, with joyful expressions and playful little details. Keep the mood cheerful whatever the weather. Black ink on pure white (#FFFFFF) paper with limited accents of red, green, blue and yellow. No cream, beige or parchment tones. The text must be high-contrast and easy to read.
 
 REALISM: no snow, frost or ice unless it's below 2°C.{{#location}} Use plants, animals, buildings and clothing that belong in {{location}}.{{/location}}`;
 
@@ -98,7 +98,7 @@ export function placeholderValues({ now, events, cast, weather, config, polished
     eventText = polished.events.map((line) => `• ${line}`).join("\n");
   } else if (events.length) {
     eventText = events
-      .map((ev) => `• ${ev.allDay ? "" : `${ev.time} — `}${ev.summary}${ev.location ? ` (${ev.location})` : ""}`)
+      .map((ev) => `• ${ev.allDay ? "" : `${ev.time} — `}${ev.summary}`)
       .join("\n");
   } else {
     const weekend = now.weekday === 0 || now.weekday === 6;

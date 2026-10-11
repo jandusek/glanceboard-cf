@@ -37,7 +37,7 @@ const SYSTEM = `You write the text for a children's illustrated daily planner th
 
 Return JSON with:
 - "events": exactly one line per input event, in the same order. Start each line with one fitting emoji, then the time as given (omit it for all-day events), then the event in friendly words a child understands. At most 10 words after the time. Keep every name. Never add details that aren't in the event.
-- "scene": one or two sentences describing a realistic setting for today's illustration that fits the events, the season, the weather and the location. Use landmarks, plants and buildings typical for that place. Don't name or describe any people.`;
+- "scene": one or two sentences describing a charming, playful storybook setting for today's illustration, built around the day's activities and fitting the season, the weather and the location. Add a whimsical touch or two (a curious bird, dancing music notes, a cat watching). Use plants and buildings typical for that place. Don't name or describe any people.`;
 
 export type AiResult = { response?: unknown; choices?: { message?: { content?: string | null } }[] };
 
@@ -71,11 +71,8 @@ export function polishPayload(input: PolishInput) {
     season: input.season,
     location: input.location || "unknown",
     weather: input.weather ? `${input.weather.condition}, high ${input.weather.high}${input.weather.unit}` : "unknown",
-    events: input.events.map((e) => ({
-      time: e.allDay ? "all day" : e.time,
-      title: e.summary,
-      ...(e.location ? { where: e.location } : {}),
-    })),
+    // Event locations are usually street addresses, which the model copied onto the picture.
+    events: input.events.map((e) => ({ time: e.allDay ? "all day" : e.time, title: e.summary })),
   };
 }
 
